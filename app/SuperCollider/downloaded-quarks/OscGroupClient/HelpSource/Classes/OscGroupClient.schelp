@@ -1,0 +1,134 @@
+TITLE:: OscGroupClient
+summary:: an SC interface to Ross Bencina's OscGroups
+categories:: External Control>OSC
+related:: Classes/OSCFunc, Classes/OSCdef, Guides/OSC_communication
+
+DESCRIPTION::
+an SC interface to Ross Bencina's OscGroups, available for download from:
+
+
+	http://www.audiomulch.com/~rossb/code/oscgroups/
+
+CLASSMETHODS::
+
+METHOD:: program
+Path to the OscGroupClient executable file
+
+DISCUSSION:: code:: OscGroupClient.program_("/Path/to/OscGroupClient"); ::
+
+METHOD:: new
+Create a new client
+
+ARGUMENT:: serveraddress
+The String with the server's name or IP address. (The lookback address may not work)
+
+ARGUMENT:: username
+a unique userid
+
+ARGUMENT:: password
+a password for the user. If one has not been set, then what you put here will become the password
+
+ARGUMENT:: groupname
+a name that all group members agree on, like a user name it should be unique.
+
+ARGUMENT:: grouppassword
+the password for the group. If one has not been set, then what you put here will become the password
+
+ARGUMENT:: serverport
+optional if your server is running on an unusual port
+
+ARGUMENT:: localtoremoteport
+optional
+
+ARGUMENT:: localtxport
+optional
+
+ARGUMENT:: localrxport
+optional
+
+
+
+INSTANCEMETHODS::
+
+METHOD:: join
+join the server
+
+METHOD:: addResp
+add a responder for OTHER people on the server to send messages to you
+
+ARGUMENT:: id
+The OSC tag
+
+ARGUMENT:: function
+The function that gets called when you receive a message from another user. It takes the arguments, time, resp, msg;
+
+
+
+
+
+METHOD:: sendMsg
+send a message to the group, not including yourself
+
+ARGUMENT::  ... msg
+The first argument must be the OSC tag. Optional additional targets can be whatever other information you would like to send
+
+
+
+
+METHOD:: removeResp
+remove a responder
+
+ARGUMENT:: id
+the OSC tag for the responder you would like to remove
+
+
+
+METHOD:: close
+close your connection to the server and clean up.
+
+EXAMPLES::
+
+code::
+                  // server address       ,userid,   userpassword, groupid, grouppassword
+
+a = OscGroupClient("realizedsound.mooo.com", "josh", "joshword", "test", "testword")
+
+
+// join the Server
+
+a.join;
+
+
+
+// add a responder for OTHER people on the server to send messages to you
+
+a.addResp(\test, {arg time, resp, msg;
+
+	msg.postln;
+
+	});
+
+
+
+// and remove your responder. This is an IdentityDictionary in the class, so you can have as
+
+// many responders with unique ids that you want
+
+a.removeResp(\test);
+
+
+
+// this sends a message to everyone else. You don't see anything though on your end
+
+a.sendMsg(\test)
+
+
+// you can send more then just the trigger id, just comma separate the stuff you are sending!):
+
+a.sendMsg(\test, "How much can I send?", 1232, \etc);
+
+
+// close your connection to the server, and clean up.
+
+a.close;
+::

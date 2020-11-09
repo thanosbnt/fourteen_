@@ -1,0 +1,10 @@
+(
+// a must:
+	name: 			"OscGroupClient",
+	path: 			"OscGroupClient",
+	version: 		"1.1",
+	summary:		"OscGroupClient - for communicating with Ross Bencina's OscGroupServer",
+	author: 		"Joshua Parmenter, Charles Hutchins",
+	schelp: 		"OscGroupClient",
+	ext_dependancy: "OscGroups"
+)

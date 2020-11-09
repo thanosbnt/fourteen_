@@ -1,0 +1,6 @@
+includePaths:
+    - /supercollider/install/share/SuperCollider/SCClassLibrary
+    - /supercollider/install/share/SuperCollider/Extensions
+    - /home/sclang/.local/share/SuperCollider/Extensions
+    - /home/sclang/.local/share/SuperCollider/downloaded-quarks
+postInlineWarnings: true
