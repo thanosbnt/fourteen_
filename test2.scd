@@ -60,7 +60,7 @@ x = OSCFunc( { | msg, time, addr, port |
     // x = Synth("help_mp3_01", [\bufnum, b.bufnum], addAction:\addToTail);
 
 
-    s.record(path: "/home/sclang/.local/share/SuperCollider/out.wav", duration: 5);
+    // s.record(path: "/home/sclang/.local/share/SuperCollider/out.wav", duration: 5);
 
 }, "/print" );
 

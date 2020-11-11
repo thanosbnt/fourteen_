@@ -1,83 +1,54 @@
-FROM ubuntu:20.04 AS build-base
-WORKDIR /supercollider/src/
-# cmake pulls in tzdata which prompts for input
-# install it separately using non-interactive frontend
-# apt-utils helps get rid of some warnings
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install \
-        apt-utils \
-        tzdata
-RUN apt-get install --yes \
-        git \
-        gcc \
-        g++ \
-        make \
-        cmake \
-    && rm -rf /var/lib/apt/lists/* \
-    && git clone \
-        --branch master \
-        --depth 1 \
-        --recurse-submodules \
-        https://github.com/supercollider/supercollider.git \
-    && git clone \
-        --branch master \
-        --depth 1 \
-        --recurse-submodules \
-        https://github.com/supercollider/sc3-plugins.git
+FROM ubuntu:18.04
 
-FROM build-base AS build-supercollider
-WORKDIR /supercollider/src/supercollider/build/
-RUN apt-get update && apt-get install --yes \
-        libasound2-dev \
-        libfftw3-dev \
-        libicu-dev \
-        libreadline-dev \
-        libsndfile1-dev \
-        libncurses-dev \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-        libjack-jackd2-dev \
-        jackd2 \
-    && rm -rf /var/lib/apt/lists/* \
-    && cmake \
-        -DCMAKE_INSTALL_PREFIX:PATH=/supercollider/install/ \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DSC_EL=OFF \
-        -DSC_ED=OFF \
-        -DSC_VIM=OFF \
-        -DSC_QT=OFF \
-        -DSC_IDE=OFF \
-        -DNO_X11=ON \
-        -DSC_HIDAPI=OFF \
-        -DNO_AVAHI=ON \
-        .. \
-    && cmake --build . --target install -- -j$(nproc) \
-    && ldconfig
+ENV DEBIAN_FRONTEND noninteractive
+ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND noninteractive
 
-FROM build-base AS build-sc3plugins
-WORKDIR /supercollider/src/sc3-plugins/build/
-RUN apt-get update && apt-get install --yes \
-        libfftw3-dev \
-    && cmake \
-        -DCMAKE_INSTALL_PREFIX:PATH=/supercollider/install/ \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DSC_PATH=/supercollider/src/supercollider/ \
-        .. \
-    && cmake --build . --target install -- -j$(nproc) \
-    && ldconfig
+ENV SC_VERSION 3.10.2
+ENV SC_MAJORVERSION 3.10
+ENV SC_PLUGIN_VERSION 3.10.0
 
-FROM ubuntu:20.04
-ENV PATH /supercollider/install/bin:$PATH
-WORKDIR /supercollider/install/
-COPY --from=build-supercollider /supercollider/install/ .
-COPY --from=build-sc3plugins /supercollider/install/ .
-RUN apt-get update && apt-get install --yes \
-        git \
-        libfftw3-3 \
-    && DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends \
-        jackd1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && echo "/usr/bin/jackd --no-realtime -d dummy" >> /etc/jackdrc \
-    && useradd --create-home --groups audio sclang \
-    && chown -R sclang /supercollider
+RUN apt-get update \
+  && apt-get -y upgrade \
+  && apt-get install -yq --no-install-recommends \
+    build-essential \
+    bzip2 \
+    ca-certificates \
+    cmake \
+    git \
+    jackd \
+    libasound2-dev \
+    libavahi-client-dev \
+    libcwiid-dev \
+    libfftw3-dev \
+    libicu-dev \
+    libjack-dev \
+    libjack0 \
+    libreadline6-dev \
+    libsndfile1-dev \
+    libudev-dev \
+    libxt-dev \
+    pkg-config \
+    unzip \
+    wget \
+    xvfb \
+  \
+  && rm -rf /var/lib/apt/lists/*
+  
+RUN apt-get update && \
+    apt-get install -y software-properties-common && \
+    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys FABAEF95 && \
+    add-apt-repository -y ppa:supercollider/ppa && \
+    add-apt-repository -y multiverse && \
+    apt-get update && \
+    apt-get install -y icecast2 darkice libasound2 libasound2-plugins alsa-utils alsa-oss jack-tools supercollider xvfb curl && \
+    apt-get clean
+
+RUN curl -o forego.tgz https://bin.equinox.io/c/ekMN3bCZFUn/forego-stable-linux-amd64.tgz && \
+    tar xvf forego.tgz && \
+    rm forego.tgz && \
+    mv forego /usr/bin/forego && \
+    chmod +x /usr/bin/forego
 
 RUN apt-get update 
 RUN apt-get install -y lame
@@ -85,13 +56,38 @@ RUN apt-get install -y curl
 RUN apt-get install -y vorbis-tools
 RUN apt-get install -y nano
 
+COPY asoundrc /root/.asoundrc
+
+COPY icecast.xml /etc/icecast2/icecast.xml
+COPY darkice.cfg /etc/darkice.cfg
+
+COPY startup.scd /root/.config/SuperCollider/startup.scd
+COPY radio.sc /radio.sc
+
+COPY Procfile Procfile
+RUN mv /etc/security/limits.d/audio.conf.disabled /etc/security/limits.d/audio.conf && \
+    usermod -a -G audio root
+
+EXPOSE 8000
+EXPOSE 57120
+
+RUN mkdir /usr/share/SuperCollider/downloaded-quarks
+RUN mkdir /usr/share/SuperCollider/synthdefs
+
+COPY /app/SuperCollider/downloaded-quarks /usr/share/SuperCollider/downloaded-quarks
+COPY /app/SuperCollider/synthdefs /usr/share/SuperCollider/synthdefs
 COPY . .
 
 
-USER sclang
+
+CMD ["forego", "start"]
+
+
+#USER sclang
+
+
 
 #RUN mkdir /home/sclang/.config
 #RUN mkdir /home/sclang/.config/SuperCollider
 
-EXPOSE 57120
 #ENTRYPOINT ["sclang"]

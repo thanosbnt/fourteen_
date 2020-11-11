@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  fourteen_api:
+  fourteen_api_streaming:
     build:
       context: ../
       dockerfile: ./docker/Dockerfile
@@ -33,13 +33,16 @@ services:
       - ./pg_data:/var/lib/postgresql/data
     networks:
       default:
-  sc:
+
+  sc_streaming:
     build:
       context: ../
       dockerfile: ./docker/Dockerfile-sc
-    command: "sclang -a -l /supercollider/install/sclang.yaml test2.scd"
+    command: "forego start"
     ports:
       - "57120:57120/udp"
+      - "8000:8000"
+    restart: on-failure
     volumes:
       - ../app:/home/sclang/.local/share
     networks:
