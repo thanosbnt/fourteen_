@@ -12,22 +12,16 @@ import logging
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
 
-class Test(Resource):
+class StartStream(Resource):
     """
     Test resource for experimenting.
     """
-    # parser = reqparse.RequestParser()
-    # parser.add_argument('email', type=str, store_missing=False)
-    RADIO_LIST = ['http://tx.planetradio.co.uk/icecast.php?i=net1northyorkshire.mp3',
-         'http://icecast.thisisdax.com/HeartBerkshireMP3',
-         'http://tx.planetradio.co.uk/icecast.php?i=net1bournemouth.mp3',
-         'http://radio.arqiva.tv/rnib-connect.mp3',
-         'http://tx.planetradio.co.uk/icecast.php?i=magic1548.mp3',
-         'http://icy-e-04.sharp-stream.com/totallyradio.mp3',
-         'http://lincs.planetwideradio.com:8035/traxfm',
-         'http://tx.planetradio.co.uk/icecast.php?i=viking.mp3',
-         'http://icecast.thisisdax.com/CapitalEdinburghMP3',
-         'http://tx.planetradio.co.uk/icecast.php?i=northsound2.mp3']
+    parser = reqparse.RequestParser()
+    parser.add_argument('start', type=str, store_missing=False)
+    parser.add_argument('stop', type=str, store_missing=False)
+
+    RADIO_LIST = ['http://edge-bauermz-01-cr.sharp-stream.com/magic1548.mp3',
+                    'http://edge-bauermz-01-cr.sharp-stream.com/magic1548.mp3']
 
     # def fetch(self):
     #     radio_list = ['http://tx.planetradio.co.uk/icecast.php?i=net1northyorkshire.mp3',
@@ -56,18 +50,21 @@ class Test(Resource):
     #             continue
 
     def get(self):
-        # args = self.parser.parse_args()
-        # print(args)
-
-        # chunk = self.fetch()
-        # song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3").export("/home/app/SuperCollider/file_1.wav", format="wav")
-        radio = random.choice(self.RADIO_LIST)
+        args = self.parser.parse_args()
+        print(args)
         client = pyOSC3.OSCClient()
         client.connect( ( '10.5.0.11', 57120 ) )
-        msg = pyOSC3.OSCMessage()
-        msg.setAddress("/print")
-        msg.append(radio)
-        client.send(msg)
+        if 'start' in args:
+            radio = random.choice(self.RADIO_LIST)
+            msg = pyOSC3.OSCMessage()
+            msg.setAddress("/start")
+            msg.append(radio)
+            client.send(msg)
+        elif 'stop' in args:
+            msg = pyOSC3.OSCMessage()
+            msg.setAddress("/stop")
+            msg.append("stopping")
+            client.send(msg)          
 
 
         return None

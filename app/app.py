@@ -5,7 +5,7 @@ from flask_restful import Api
 from extensions import db
 from settings.config import BaseConfig
 from api.errors import InvalidUsage
-from api.resources import Test
+from api.resources import StartStream
 
 import logging
 
@@ -60,7 +60,7 @@ def create_app(**config_overrides):
         """
         return render_template('index.html')
 
-    api.add_resource(Test, '/api/test')  # get
+    api.add_resource(StartStream, '/api/start')  # get
 
     return app
     
