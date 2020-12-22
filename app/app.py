@@ -5,9 +5,27 @@ from flask_restful import Api
 from extensions import db
 from settings.config import BaseConfig
 from api.errors import InvalidUsage
-from api.resources import StartStream
+from api.resources import StartStream, Test
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+import time
+import random
+from flask import request, jsonify
+from flask_restful import Resource, reqparse, inputs
+import requests
+from pydub import AudioSegment
+import pyOSC3
+import io
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+from scipy.spatial import cKDTree
+from shapely.geometry import Point
+
 
 import logging
+logger = logging.getLogger(__name__)
 
 
 def create_before_request(app):
@@ -21,9 +39,11 @@ def create_app(**config_overrides):
     logger = logging.getLogger(__name__)
     logger.info('app starts...')
 
-
     app = Flask(__name__, static_folder="./static/dist",
                 template_folder="./static/src")
+
+    limiter = Limiter(key_func=get_remote_address)
+    limiter.init_app(app)
 
     app.config.from_object(BaseConfig)
 
@@ -41,6 +61,28 @@ def create_app(**config_overrides):
     # db.create_all()
     # app.before_request(create_before_request(app))
 
+    def ckdnearest(gdA, gdB):
+        nA = np.array(list(gdA.geometry.apply(lambda x: (x.x, x.y))))
+        nB = np.array(list(gdB.geometry.apply(lambda x: (x.x, x.y))))
+        btree = cKDTree(nB)
+        dist, idx = btree.query(nA, k=1)
+        gdA['dist'] = dist
+        return gdA[gdA.dist == gdA.dist.min()]
+
+    def x(row):
+        try:
+            x = row[0]
+            return x
+        except Exception:
+            pass
+
+    def y(row):
+        try:
+            x = row[1]
+            return x
+        except Exception:
+            pass
+
     # error handling
     @app.errorhandler(InvalidUsage)
     def handle_invalid_usage(error):
@@ -51,16 +93,43 @@ def create_app(**config_overrides):
         response.status_code = error.status_code
         return response
 
+    @app.route('/api', methods=["GET"])
+    @limiter.limit("1 per 20second")
+    def send_station():
 
-    # template resources
-    @app.route('/')
-    def index():
-        """ 
-        Displays the index page accessible at '/'
-        """
-        return render_template('index.html')
+        logger.info(request.args['x'])
+        df = pd.read_json('stations.json')
+        df['place_name'] = df['place'].apply(lambda x: x['name'])
+        df['country'] = df['country'].apply(lambda x: x['name'])
+        df['place_geo_x'] = df['place'].apply(lambda f: x(f['geo']))
+        df['place_geo_y'] = df['place'].apply(lambda f: y(f['geo']))
+        gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(
+            df.place_geo_x, df.place_geo_y))
 
-    api.add_resource(StartStream, '/api/start')  # get
+        gpd1 = gdf
+        gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
+            request.args['y']))]], columns=['Place', 'geometry'])
+
+        radio_list = random.choice(ckdnearest(gpd1, gpd2)[
+                                   ['mp3', 'country', 'place_name', 'name']].values)
+
+        # RADIO_LIST = ['http://edge-bauermz-01-cr.sharp-stream.com/magic1548.mp3',
+        #               'http://radiostreaming.ert.gr/ert-rodos']
+        logger.info(radio_list[0])
+
+        client = pyOSC3.OSCClient()
+        client.connect(('10.5.0.11', 57120))
+        radio = radio_list[0]
+        msg = pyOSC3.OSCMessage()
+        msg.setAddress("/start")
+        msg.append(radio)
+        client.send(msg)
+        return np.array2string(radio_list[1:]).replace('[', '').replace(']', '').replace("'", '')
+
+        # StartStream.method_decorators.append(limiter.limit('1 per 15second'))
+        # Test.method_decorators.append(limiter.limit('1 per day'))
+
+        # api.add_resource(StartStream, '/api/start')  # get
+        # api.add_resource(Test, '/api/test')  # get
 
     return app
-    

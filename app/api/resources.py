@@ -48,7 +48,7 @@ class StartStream(Resource):
     #             return chunk
     #         else:
     #             continue
-
+    # @limiter.limit("1/minute", override_defaults=False)
     def get(self):
         args = self.parser.parse_args()
         print(args)
@@ -68,3 +68,13 @@ class StartStream(Resource):
 
 
         return None
+
+class Test(Resource):
+    """
+    Test resource for experimenting.
+    """
+  
+    def get(self):
+        logger.info('test')
+
+        return ":("

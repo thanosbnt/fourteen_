@@ -59,3 +59,4 @@ python-osc==1.7.4
 SoundFile==0.10.3.post1
 pydub==0.24.1
 pyOSC3==1.2
+Flask-Limiter==1.4
