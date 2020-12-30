@@ -93,18 +93,15 @@ def create_app(**config_overrides):
         response.status_code = error.status_code
         return response
 
+    df = pd.read_csv('stations.csv')
+    gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(
+        df.place_geo_x, df.place_geo_y))
+
     @app.route('/api', methods=["GET"])
     @limiter.limit("1 per 20second")
     def send_station():
 
         logger.info(request.args['x'])
-        df = pd.read_json('stations.json')
-        df['place_name'] = df['place'].apply(lambda x: x['name'])
-        df['country'] = df['country'].apply(lambda x: x['name'])
-        df['place_geo_x'] = df['place'].apply(lambda f: x(f['geo']))
-        df['place_geo_y'] = df['place'].apply(lambda f: y(f['geo']))
-        gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(
-            df.place_geo_x, df.place_geo_y))
 
         gpd1 = gdf
         gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
@@ -113,12 +110,11 @@ def create_app(**config_overrides):
         radio_list = random.choice(ckdnearest(gpd1, gpd2)[
                                    ['mp3', 'country', 'place_name', 'name']].values)
 
-        # RADIO_LIST = ['http://edge-bauermz-01-cr.sharp-stream.com/magic1548.mp3',
-        #               'http://radiostreaming.ert.gr/ert-rodos']
         logger.info(radio_list[0])
 
         client = pyOSC3.OSCClient()
         client.connect(('10.5.0.11', 57120))
+
         radio = radio_list[0]
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/start")
