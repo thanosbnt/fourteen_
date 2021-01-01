@@ -1,4 +1,8 @@
-import os, sys
+from app import create_app
+from flask_migrate import MigrateCommand
+from flask_script import Manager, Server
+import os
+import sys
 import unittest
 from settings.config import get_config
 
@@ -6,9 +10,6 @@ config = get_config()
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from flask_script import Manager, Server
-from flask_migrate import MigrateCommand
-from app import create_app
 
 application = create_app()
 
@@ -28,7 +29,8 @@ manager.add_command('runserver', Server(
     use_debugger=config['flask_server']['use_debugger'],
     use_reloader=config['flask_server']['use_reloader'],
     host=config['flask_server']['host'],
-    port=config['flask_server']['port']
+    port=config['flask_server']['port'],
+    processes=3
 ))
 
 

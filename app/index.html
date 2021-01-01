@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>...</title>
+        <script type="text/javascript" src="http://d3js.org/d3.v4.min.js"></script>
+        <script src="http://d3js.org/topojson.v1.min.js"></script>
+        <script src="https://unpkg.com/mathjs/lib/browser/math.js"></script>
+        <script src="https://d3js.org/d3-array.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo.v2.min.js"></script>
+        <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+        <style type="text/css">
+
+          path {
+            fill: #ccc;
+            stroke: #000;
+          }
+          .term {
+            color: white;
+          }
+
+        </style>
+    </head>
+    <body style="background-color:white;">
+        <audio id="music" preload="all">
+          <source src="{{ url_for('audio_play') }}">
+        </audio>
+
+        <script type="text/javascript">
+
+
+          var width = 1500,
+              height = 1000;
+
+          var scale = 200;
+
+          var svg = d3.select("body").append("svg")
+              .attr("width", width)
+              .attr("height", height);
+
+          var projection = d3.geoAiry()
+              .scale(scale)
+              .translate([width /2, height / 2]);
+
+
+          var geoGenerator = d3.geoPath()
+              .projection(projection);
+
+            const zoom = d3.zoom()
+              .scaleExtent([1, 200])
+              .on('zoom', zoomed);
+
+
+            var g = svg.append('g');
+
+            svg.call(zoom);
+
+          var text_val = "test";
+
+          sText = g.append("text")
+            .attr("id", "meantext")
+            .text(text_val)
+            .attr("x", 10) 
+            .attr("y", 10) 
+            .attr("fill", "black") 
+            .attr("font-family",  "monospace");
+
+          var i = 0;
+
+          function transition(textData,row,column) {
+             d3.select('text').datum(textData[row].split("").slice(0,column+1))
+              .transition()
+              .delay(function(d) { return (row*5000) + (column*50); } )
+              .text(function(d){return d.join("");});
+          }
+
+            //Load in GeoJSON data
+            d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped.geojson", function(json) {
+
+                g.selectAll(".com")
+                   .data(json.features)
+                   .enter()
+                   .append("path")
+                   .attr("class", "line")
+                   .attr("d", geoGenerator)
+                   .style("fill", "none")
+                   .style("stroke","black")
+                   .on("mouseover", function(d) {
+                          d3.select(this).style("stroke","red");
+                          }
+                        )
+                    .on("mouseout", function(d) {
+                          d3.select(this).style("stroke","black");
+                          }
+                        )
+                    .on("click", function(d) {
+                          // var request = new XMLHttpRequest();
+                          x = (d.geometry.coordinates[0][0] + +d.geometry.coordinates[1][0])/2;
+                          y = (d.geometry.coordinates[0][1] + +d.geometry.coordinates[1][1])/2;
+
+
+                          // request.open('GET', 'http://0.0.0.0:5001/api?x='+x+'&y='+y, false);
+                          // request.send();  
+                          var text_val = 'test';
+                          fetch('/api?x='+x+'&y='+y)
+                            .then(function (response) {
+                                return response.json();
+                            }).then(function (text) {
+                                console.log('GET response:');
+                                console.log(text.msg); 
+                                text_val =  text.msg;
+                                if (text_val == 'test'){
+                                  var textData = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ..."];
+                                  textData.forEach(function(d,row) {
+                                    d.split("").forEach(function(d,column) {
+                                        transition(textData, row,column);
+                                    });
+                                  });
+                
+                                  // request.open('GET', 'http://0.0.0.0:5001/api?start', true);
+                                  // request.send();
+                                  var music = document.getElementById('music');
+                                  music.play();
+                                  text_val = 'triggered';
+                                } else {
+                                var textData = [text_val];
+                                textData.forEach(function(d,row) {
+                                    d.split("").forEach(function(d,column) {
+                                        transition(textData, row,column);
+                                    });
+                                  });
+                                  // var request = new XMLHttpRequest();
+                                  // request.open('GET', 'http://0.0.0.0:5001/api?start', true);
+                                  // request.send();  
+                                  // setTimeout(() => {  
+                                  //   var request = new XMLHttpRequest();
+                                  //   request.open('GET', 'http://0.0.0.0:5001/api?start', true);
+                                  //   request.send();  
+                                  //   console.log("timing out!"); 
+                                  //   },
+                                  //   17000);
+                                  var music = document.getElementById('music');
+                                  music.play();
+                                  }
+
+                            });
+
+ 
+                          }
+
+                        );
+          
+                  updateData();
+
+            });
+
+
+        function zoomed() {
+          svg
+            .selectAll('path') // To prevent stroke width from scaling
+            .attr('transform', d3.event.transform);
+        };
+
+
+        function updateData() {
+
+                var scattered = svg.selectAll("path").attr("class", "line")
+                  .transition()
+                  .duration(2000)
+                  .attr("d", function(d,i) {
+                    d.geometry.coordinates.map(function(subarray, j) {
+                      return subarray.map(function(number, i) {
+                        d.geometry.coordinates[j][i]  = number + Math.random();
+                      })
+                    })
+                    var coordinates0 = d.geometry.coordinates.map(projection);
+                    var d0 = "M" + coordinates0.join("L") + "Z";
+                    return d0;
+                  })
+        }
+
+        var timer = setInterval(updateData, 5000);
+
+        </script>
+    </body>
+</html>

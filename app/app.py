@@ -1,4 +1,4 @@
-from flask import Flask, g, render_template, jsonify
+from flask import Flask, g, render_template, jsonify, Response
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_restful import Api
@@ -39,8 +39,8 @@ def create_app(**config_overrides):
     logger = logging.getLogger(__name__)
     logger.info('app starts...')
 
-    app = Flask(__name__, static_folder="./static/dist",
-                template_folder="./static/src")
+    app = Flask(__name__,
+                template_folder="./")
 
     limiter = Limiter(key_func=get_remote_address)
     limiter.init_app(app)
@@ -83,7 +83,6 @@ def create_app(**config_overrides):
         except Exception:
             pass
 
-    # error handling
     @app.errorhandler(InvalidUsage)
     def handle_invalid_usage(error):
         """ 
@@ -96,6 +95,20 @@ def create_app(**config_overrides):
     df = pd.read_csv('stations.csv')
     gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(
         df.place_geo_x, df.place_geo_y))
+
+    @app.route('/')
+    def home_page():
+        example_embed = 'This string is from python'
+        return render_template('index.html', embed=example_embed)
+
+    @app.route('/api/audio_feed')
+    def audio_play():
+        def fetch():
+            radio = 'http://10.5.0.11:8000/stream.mp3'
+            r = requests.get(radio, stream=True)
+            for chunk in r.iter_content(chunk_size=20000):
+                yield chunk
+        return Response(fetch(), mimetype="audio/mp3")
 
     @app.route('/api', methods=["GET"])
     @limiter.limit("1 per 20second")
@@ -120,7 +133,9 @@ def create_app(**config_overrides):
         msg.setAddress("/start")
         msg.append(radio)
         client.send(msg)
-        return np.array2string(radio_list[1:]).replace('[', '').replace(']', '').replace("'", '')
+        logger.info({"msg": np.array2string(radio_list[1:]).replace(
+            '[', '').replace(']', '').replace("'", '')})
+        return {"msg": np.array2string(radio_list[1:]).replace('[', '').replace(']', '').replace("'", '')}
 
         # StartStream.method_decorators.append(limiter.limit('1 per 15second'))
         # Test.method_decorators.append(limiter.limit('1 per day'))
