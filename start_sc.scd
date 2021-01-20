@@ -7,11 +7,16 @@ m = OSCFunc( { | msg, time, addr, port |
 
     stationString = msg[1];
     ( "stationString is " + stationString ).postln;
-    // Reading into a buffer is possible, but you *must* specify the number of (uncompressed) frames to read.
+
+    b = NetAddr.new("10.5.0.3", 5555);    // create the NetAddr
+    b.sendMsg("/sendStation", "haygbboi"); 
 
     m = MP3(stationString, \readurl);
-    m.start;
-    b= Buffer.readChannel(s, m.fifo, 0, 100000, channels:[0]);
+    
+    try {  m.start;}  { "mp3StartError".postln;};
+    try {  b= Buffer.readChannel(s, m.fifo, 0, 100000/2, channels:[0]);}  { "readBufferError".postln;};
+
+   
     
     y = SynthDef(\grain_resonance, { |grain_pos=1,trig=60, bufnum=0, room=0.9, damp = 0.9, amp=0.3|
         var sig, env;
@@ -82,32 +87,32 @@ o = OSCFunc( { | msg, time, addr, port |
     var stationString;
 
     stationString = msg[1];
-    (
-    fork {
-        var n;
-        n=0.3;
-        30.do {
-            x.set(\amp, n);
-            y.set(\amp, n);
-            z.set(\amp, n);
-            n=n-0.01;
-            n.postln;
-            0.5.wait;
-        };
-        "This is it.".postln;
-        y.free;
-        x.free;
-        z.free;
+    // (
+    // fork {
+    //     var n;
+    //     n=0.3;
+    //     30.do {
+    //         x.set(\amp, n);
+    //         y.set(\amp, n);
+    //         z.set(\amp, n);
+    //         n=n-0.01;
+    //         n.postln;
+    //         0.5.wait;
+    //     };
+    //     "This is it.".postln;
+    //     y.free;
+    //     x.free;
+    //     z.free;
 
-    }
-    );
+    // }
+    // );
 
     ( "I am " + stationString ).postln;
 
     //b.play;
-    // b.close; 
-    // b.free;
-    // m.finish;
+    b.close; 
+    b.free;
+    m.finish;
 
 
 }, "/stop" );

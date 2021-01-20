@@ -9,6 +9,7 @@
         <script src="https://d3js.org/d3-array.v2.min.js"></script>
         <script src="https://d3js.org/d3-geo.v2.min.js"></script>
         <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <style type="text/css">
 
           path {
@@ -18,20 +19,53 @@
           .term {
             color: white;
           }
-
+          .textStyle {
+            font-family: monospace;
+            white-space: pre-wrap;
+            z-index: 1; 
+            position: absolute;
+          }
+          .textStyleUser {
+            font-family: monospace;
+            white-space: pre-wrap;
+            z-index: 1; 
+            position: absolute;
+            top: 200px;
+          }  
         </style>
     </head>
     <body style="background-color:white;">
-        <audio id="music" preload="all">
-          <source src="{{ url_for('audio_play') }}">
+        <audio id="music" preload="none">
+          <source src="{{ url_for('audio_play') }}" type="audio/mp3">
         </audio>
+
+
+        <!-- <input type="button" onclick="clearInterval(add)" value="stop" /> -->
+        <!-- <input type="button" onclick="start()" value="start" /> -->
+
+
+        <div id="text" class="textStyle"></div>
+        <div id="textUser" class="textStyleUser"></div>
 
         <script type="text/javascript">
 
+        function printLetterByLetter(destination, message, speed){
+          document.getElementById(destination).innerHTML = "";
+            var i = 0;
+            var interval = setInterval(function(){
+                document.getElementById(destination).innerHTML += message.charAt(i);
+                i++;
+                if (i > message.length){
+                    clearInterval(interval);
+                }
+            }, speed);
+        }
+
+
+          var music = document.getElementById('music');
 
           var width = 1500,
               height = 1000;
-
           var scale = 200;
 
           var svg = d3.select("body").append("svg")
@@ -42,37 +76,41 @@
               .scale(scale)
               .translate([width /2, height / 2]);
 
-
           var geoGenerator = d3.geoPath()
               .projection(projection);
 
-            const zoom = d3.zoom()
+          const zoom = d3.zoom()
               .scaleExtent([1, 200])
               .on('zoom', zoomed);
 
+          var g = svg.append('g');
+        
+          svg.call(zoom);
 
-            var g = svg.append('g');
+          // var text_val = "test";
 
-            svg.call(zoom);
+          // sText = g.append("text")
+          //   .attr("id", "meantext")
+          //   .text(text_val)
+          //   .attr("x", 10) 
+          //   .attr("y", 10) 
+          //   .attr("fill", "black") 
+          //   .attr("font-family",  "monospace");
 
-          var text_val = "test";
+          // function transition(textData,row,column) {
+          //    console.log(textData);
+          //    d3.select('text').datum(textData[row].split("").slice(0,column+1))
+          //     .transition()
+          //     .delay(function(d) { return (row*5000) + (column*50); } )
+          //     .text(function(d){return d.join("");});
+          // }
 
-          sText = g.append("text")
-            .attr("id", "meantext")
-            .text(text_val)
-            .attr("x", 10) 
-            .attr("y", 10) 
-            .attr("fill", "black") 
-            .attr("font-family",  "monospace");
-
-          var i = 0;
-
-          function transition(textData,row,column) {
-             d3.select('text').datum(textData[row].split("").slice(0,column+1))
-              .transition()
-              .delay(function(d) { return (row*5000) + (column*50); } )
-              .text(function(d){return d.join("");});
-          }
+          // function transition2(textData,row,column) {
+          //   sText2.datum(textData[row].split("").slice(0,column+1))
+          //     .transition()
+          //     .delay(function(d) { return (row*5000) + (column*50); } )
+          //     .text(function(d){return d.join("");});
+          // }
 
             //Load in GeoJSON data
             d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped.geojson", function(json) {
@@ -94,14 +132,15 @@
                           }
                         )
                     .on("click", function(d) {
-                          // var request = new XMLHttpRequest();
-                          x = (d.geometry.coordinates[0][0] + +d.geometry.coordinates[1][0])/2;
-                          y = (d.geometry.coordinates[0][1] + +d.geometry.coordinates[1][1])/2;
+                          x = (d.geometry.coordinates[0][0] + d.geometry.coordinates[1][0])/2;
+                          y = (d.geometry.coordinates[0][1] + d.geometry.coordinates[1][1])/2;
 
 
                           // request.open('GET', 'http://0.0.0.0:5001/api?x='+x+'&y='+y, false);
                           // request.send();  
                           var text_val = 'test';
+                          var text_val_2 = 'test';
+                          
                           fetch('/api?x='+x+'&y='+y)
                             .then(function (response) {
                                 return response.json();
@@ -109,39 +148,26 @@
                                 console.log('GET response:');
                                 console.log(text.msg); 
                                 text_val =  text.msg;
-                                if (text_val == 'test'){
-                                  var textData = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ..."];
-                                  textData.forEach(function(d,row) {
-                                    d.split("").forEach(function(d,column) {
-                                        transition(textData, row,column);
-                                    });
-                                  });
-                
-                                  // request.open('GET', 'http://0.0.0.0:5001/api?start', true);
-                                  // request.send();
-                                  var music = document.getElementById('music');
-                                  music.play();
-                                  text_val = 'triggered';
-                                } else {
-                                var textData = [text_val];
-                                textData.forEach(function(d,row) {
-                                    d.split("").forEach(function(d,column) {
-                                        transition(textData, row,column);
-                                    });
-                                  });
-                                  // var request = new XMLHttpRequest();
-                                  // request.open('GET', 'http://0.0.0.0:5001/api?start', true);
-                                  // request.send();  
-                                  // setTimeout(() => {  
-                                  //   var request = new XMLHttpRequest();
-                                  //   request.open('GET', 'http://0.0.0.0:5001/api?start', true);
-                                  //   request.send();  
-                                  //   console.log("timing out!"); 
-                                  //   },
-                                  //   17000);
-                                  var music = document.getElementById('music');
-                                  music.play();
-                                  }
+                                // if (text_val == text_val_2){
+                                //   var textData = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ..."];
+                                //   textData.forEach(function(d,row) {
+                                //     d.split("").forEach(function(d,column) {
+                                //         transition(textData, row,column);
+                                //     });
+                                //   });
+              
+                                //   music.play();
+                                //   text_val = 'triggered';
+                                // } else {
+                                // var textData = [text_val+" user "];
+                                // textData.forEach(function(d,row) {
+                                //     d.split("").forEach(function(d,column) {
+                                //         transition(textData, row,column);
+                                //     });
+                                //   });
+          
+                                //   text_val_2 = text_val
+                                //   }
 
                             });
 
@@ -152,34 +178,80 @@
           
                   updateData();
 
+
             });
 
-
+            var promise = music.play();
+                  if (promise) {
+                      promise.catch(function(error) { console.error(error); });
+                  }
         function zoomed() {
-          svg
+          g
             .selectAll('path') // To prevent stroke width from scaling
             .attr('transform', d3.event.transform);
         };
 
-
         function updateData() {
-
-                var scattered = svg.selectAll("path").attr("class", "line")
-                  .transition()
-                  .duration(2000)
-                  .attr("d", function(d,i) {
-                    d.geometry.coordinates.map(function(subarray, j) {
-                      return subarray.map(function(number, i) {
-                        d.geometry.coordinates[j][i]  = number + Math.random();
-                      })
-                    })
-                    var coordinates0 = d.geometry.coordinates.map(projection);
-                    var d0 = "M" + coordinates0.join("L") + "Z";
-                    return d0;
-                  })
+          var scattered = g.selectAll("path").attr("class", "line")
+            .transition()
+            .duration(2000)
+            .attr("d", function(d,i) {
+              d.geometry.coordinates.map(function(subarray, j) {
+                return subarray.map(function(number, i) {
+                  d.geometry.coordinates[j][i]  = number + Math.random();
+                })
+              })
+              var coordinates0 = d.geometry.coordinates.map(projection);
+              var d0 = "M" + coordinates0.join("L") + "Z";
+              return d0;
+            })
+            .each(function(d) { d.totalLength = this.getTotalLength(); })
+            .attr("stroke-width", function(d) { return d.totalLength * 0.005; })
         }
 
+
+        var text_queue = ''
+        // function to populate the queue text
+        function start() {
+          add = setInterval(function() {
+          fetch('/api/get_names')
+            .then(function (response) {
+                return response.json();
+            }).then(function (text) {
+              console.log('GET response:');
+              console.log(text.msg); 
+              var text_val =  text.msg;
+         
+              if (text_val == text_queue){
+
+                // var textData = [text_val];
+                // textData.forEach(function(d,row) {
+                //     d.split("").forEach(function(d,column) {
+                //         transition2(textData, row,column);
+                //   });
+                // });
+
+              } else {
+                if (text_val.includes("user_")) {printLetterByLetter("textUser", text_val, 50);}
+                else {printLetterByLetter("text", "Now playing | "+text_val, 50);}
+
+                // var textData = [text_val, "______ sfnsdkjfbks"];
+                // textData.forEach(function(d,row) {
+                //     d.split("").forEach(function(d,column) {
+                //         transition(textData, row,column);
+                //   });
+                // });
+                          
+              }
+              text_queue = text_val;
+            });  
+              
+        }, 10000);
+      }
         var timer = setInterval(updateData, 5000);
+        start();
+        // buttonTransition();
+        // var timer_queue = setInterval(buttonTransition, 1000);
 
         </script>
     </body>

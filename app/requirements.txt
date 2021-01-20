@@ -60,3 +60,5 @@ SoundFile==0.10.3.post1
 pydub==0.24.1
 pyOSC3==1.2
 Flask-Limiter==1.4
+celery==5.0.5
+APScheduler==3.7.0

@@ -8,14 +8,21 @@ from api.errors import InvalidUsage
 from api.resources import StartStream, Test
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from main.models import StreamingAuto, StreamingUser, NowPlaying
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import time
+from datetime import datetime
+from datetime import timedelta
+import atexit
+
 import random
 from flask import request, jsonify
 from flask_restful import Resource, reqparse, inputs
 import requests
 from pydub import AudioSegment
 import pyOSC3
+import threading
 import io
 import geopandas as gpd
 import numpy as np
@@ -56,10 +63,10 @@ def create_app(**config_overrides):
     migrate = Migrate(app, db)
     CORS(app)
     api = Api(app)
-    # from backend.main import models
+    from main import models
 
-    # db.create_all()
-    # app.before_request(create_before_request(app))
+    db.create_all()
+    app.before_request(create_before_request(app))
 
     def ckdnearest(gdA, gdB):
         nA = np.array(list(gdA.geometry.apply(lambda x: (x.x, x.y))))
@@ -85,7 +92,7 @@ def create_app(**config_overrides):
 
     @app.errorhandler(InvalidUsage)
     def handle_invalid_usage(error):
-        """ 
+        """
         Handles invalid api use
         """
         response = jsonify(error.to_dict())
@@ -110,18 +117,116 @@ def create_app(**config_overrides):
                 yield chunk
         return Response(fetch(), mimetype="audio/mp3")
 
-    @app.route('/api', methods=["GET"])
-    @limiter.limit("1 per 20second")
-    def send_station():
+    # simple callback functions
+    def answer_handler(addr, tags, stuff, source):
+        logger.info(stuff)
 
-        logger.info(request.args['x'])
+    def send_osc_server():
+        # Initialize the OSC server
+        s = pyOSC3.OSCServer(('10.5.0.3', 5555))
+
+        # Start OSCServer in extra thread
+        st = threading.Thread(target=s.serve_forever)
+        st.start()
+
+        logger.info("HERE")
+        logger.info(s.addMsgHandler("/sendStation", answer_handler))
+        # adding callback functions to listener
+        return s.addMsgHandler("/sendStation", answer_handler)
+
+    switcher = 0
+
+    @app.route('/api/queue', methods=["GET"])
+    def populate_queue():
+        switcher = 0
+        client = pyOSC3.OSCClient()
+        client.connect(('10.5.0.11', 57120))
+        # if switcher == 0:
+        #     pass
+        # else:
+        msg = pyOSC3.OSCMessage()
+        msg.setAddress("/stop")
+        msg.append('stopping')
+        client.send(msg)
+
+        res = StreamingAuto.get_last()
+        res_user = StreamingUser.get_last()
+
+        if not res_user:
+            radio = res.url
+            name = res.name
+            country = res.country
+            place_name = res.place_name
+        else:
+            # if res_user.timestamp > res.timestamp:
+            radio = res_user.url
+            name = res_user.name
+            country = res_user.country
+            place_name = res_user.place_name
+
+            StreamingUser.query.filter(StreamingUser.name == name).delete()
+
+            # else:
+            #     radio = res.url
+            #     name = res.name
+
+        msg = pyOSC3.OSCMessage()
+        msg.setAddress("/start")
+        msg.append(radio)
+        client.send(msg)
+
+        if not res_user:
+            jsonObj = {"msg": "{0} {1} {2}".format(
+                res.country, res.place_name, res.name)}
+        else:
+            jsonObj = {"msg": "{0} {1} {2}".format(
+                res_user.country, res_user.place_name, res_user.name)}
+        logger.info("-----------------------------------HERE")
+        logger.info(jsonObj)
+        time.sleep(20)
+        s = NowPlaying(country=str(country), place_name=str(place_name),
+                       name=str(name), url=str(radio),
+                       timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        db.session.add(s)
+        db.session.flush()
+        db.session.commit()
+        return jsonObj
+
+    @app.route('/api/get_names', methods=["GET"])
+    def get_names():
+        res = NowPlaying.get_last()
+        radio = res.url
+        name = res.name
+        country = res.country
+        place_name = res.place_name
+        jsonObj = {"msg": "{0} {1} {2}".format(
+            res.country, res.place_name, res.name)}
+        return jsonObj
+
+    @app.route('/api/stop', methods=["GET"])
+    def stop_queue():
+        switcher = 0
+        client = pyOSC3.OSCClient()
+        client.connect(('10.5.0.11', 57120))
+        # if switcher == 0:
+        #     pass
+        # else:
+        msg = pyOSC3.OSCMessage()
+        msg.setAddress("/stop")
+        msg.append('stopping')
+        client.send(msg)
+        jsonObject = {"msg": "stop"}
+        return jsonObject
+
+    @ app.route('/api/random', methods=["GET"])
+    def send_random_station():
 
         gpd1 = gdf
         gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
             request.args['y']))]], columns=['Place', 'geometry'])
 
         radio_list = random.choice(ckdnearest(gpd1, gpd2)[
-                                   ['mp3', 'country', 'place_name', 'name']].values)
+            ['mp3', 'country', 'place_name', 'name']].values)
 
         logger.info(radio_list[0])
 
@@ -133,14 +238,59 @@ def create_app(**config_overrides):
         msg.setAddress("/start")
         msg.append(radio)
         client.send(msg)
-        logger.info({"msg": np.array2string(radio_list[1:]).replace(
-            '[', '').replace(']', '').replace("'", '')})
-        return {"msg": np.array2string(radio_list[1:]).replace('[', '').replace(']', '').replace("'", '')}
 
-        # StartStream.method_decorators.append(limiter.limit('1 per 15second'))
-        # Test.method_decorators.append(limiter.limit('1 per day'))
+        station_string = np.array2string(radio_list[1:]).replace(
+            '[', '').replace(']', '').replace("'", '')
 
-        # api.add_resource(StartStream, '/api/start')  # get
-        # api.add_resource(Test, '/api/test')  # get
+        s = StreamingAuto(country=radio_list[1], place_name=radio_list[2],
+                          name=radio_list[3], url=radio,
+                          timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
+        s.save()
+        db.session.commit()
+
+        jsonObject = {"msg": station_string}
+        return jsonObject
+
+    # @ limiter.limit("1 per 20second")
+    @ app.route('/api', methods=["GET"])
+    def send_station():
+
+        logger.info(request.args['x'])
+
+        gpd1 = gdf
+        gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
+            request.args['y']))]], columns=['Place', 'geometry'])
+
+        radio_list = random.choice(ckdnearest(gpd1, gpd2)[
+            ['mp3', 'country', 'place_name', 'name']].values)
+
+        res_user = StreamingUser(url=radio_list[0], country=radio_list[1], place_name=radio_list[2],
+                                 name=radio_list[3], timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        res_user.save()
+        db.session.commit()
+
+        jsonObj = {"msg": "{0} {1} {2}".format(
+            res_user.country, res_user.place_name, res_user.name)}
+
+        logger.info(radio_list[0])
+
+        # client = pyOSC3.OSCClient()
+        # client.connect(('10.5.0.11', 57120))
+
+        # radio = radio_list[0]
+        # msg = pyOSC3.OSCMessage()
+        # msg.setAddress("/start")
+        # msg.append(radio)
+        # client.send(msg)
+
+        return jsonObj
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(func=populate_queue, trigger="interval", seconds=30)
+    scheduler.start()
+
+    # Shutdown your cron thread if the web process is stopped
+    atexit.register(lambda: scheduler.shutdown())
 
     return app

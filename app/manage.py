@@ -27,7 +27,7 @@ manager = Manager(app=application)
 # manager.add_command('drop_datasource', DropDatasource)
 manager.add_command('runserver', Server(
     use_debugger=config['flask_server']['use_debugger'],
-    use_reloader=config['flask_server']['use_reloader'],
+    use_reloader=False,
     host=config['flask_server']['host'],
     port=config['flask_server']['port'],
     processes=3
