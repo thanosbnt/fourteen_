@@ -111,9 +111,15 @@
           //     .delay(function(d) { return (row*5000) + (column*50); } )
           //     .text(function(d){return d.join("");});
           // }
+          // Define the div for the tooltip
+
+          var div = d3.select("body").append("div")	
+              .attr("id", "popup")
+              .attr("class", "textStyle")				
+              .style("opacity", 0);
 
             //Load in GeoJSON data
-            d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped.geojson", function(json) {
+            d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped_names.geojson", function(json) {
 
                 g.selectAll(".com")
                    .data(json.features)
@@ -125,13 +131,23 @@
                    .style("stroke","black")
                    .on("mouseover", function(d) {
                           d3.select(this).style("stroke","red");
+                          div.transition()		
+                            .duration(200)		
+                            .style("opacity", .9);		
+                          div	.html(d.properties.name)	
+                            .style("left", (d3.event.pageX) + "px")		
+                            .style("top", (d3.event.pageY - 28) + "px");	
                           }
                         )
                     .on("mouseout", function(d) {
                           d3.select(this).style("stroke","black");
+                          div.transition()		
+                            .duration(500)		
+                            .style("opacity", 0);	
                           }
                         )
                     .on("click", function(d) {
+                      div	.html(printLetterByLetter("popup","Added to queue | "+d.properties.name));
                           x = (d.geometry.coordinates[0][0] + d.geometry.coordinates[1][0])/2;
                           y = (d.geometry.coordinates[0][1] + d.geometry.coordinates[1][1])/2;
 
@@ -141,7 +157,7 @@
                           var text_val = 'test';
                           var text_val_2 = 'test';
                           
-                          fetch('/api?x='+x+'&y='+y)
+                          fetch('/api?x='+x+'&y='+y+'&country='+d.properties.name)
                             .then(function (response) {
                                 return response.json();
                             }).then(function (text) {

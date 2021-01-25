@@ -117,33 +117,15 @@ def create_app(**config_overrides):
                 yield chunk
         return Response(fetch(), mimetype="audio/mp3")
 
-    # simple callback functions
-    def answer_handler(addr, tags, stuff, source):
-        logger.info(stuff)
-
-    def send_osc_server():
-        # Initialize the OSC server
-        s = pyOSC3.OSCServer(('10.5.0.3', 5555))
-
-        # Start OSCServer in extra thread
-        st = threading.Thread(target=s.serve_forever)
-        st.start()
-
-        logger.info("HERE")
-        logger.info(s.addMsgHandler("/sendStation", answer_handler))
-        # adding callback functions to listener
-        return s.addMsgHandler("/sendStation", answer_handler)
-
-    switcher = 0
-
     @app.route('/api/queue', methods=["GET"])
     def populate_queue():
-        switcher = 0
+        """
+        Random station playback
+        """
+
         client = pyOSC3.OSCClient()
         client.connect(('10.5.0.11', 57120))
-        # if switcher == 0:
-        #     pass
-        # else:
+
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/stop")
         msg.append('stopping')
@@ -158,17 +140,12 @@ def create_app(**config_overrides):
             country = res.country
             place_name = res.place_name
         else:
-            # if res_user.timestamp > res.timestamp:
             radio = res_user.url
             name = res_user.name
             country = res_user.country
             place_name = res_user.place_name
 
             StreamingUser.query.filter(StreamingUser.name == name).delete()
-
-            # else:
-            #     radio = res.url
-            #     name = res.name
 
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/start")
@@ -181,12 +158,13 @@ def create_app(**config_overrides):
         else:
             jsonObj = {"msg": "{0} {1} {2}".format(
                 res_user.country, res_user.place_name, res_user.name)}
-        logger.info("-----------------------------------HERE")
-        logger.info(jsonObj)
-        time.sleep(20)
+
+        # sleeping so backend and sc can 'sync'
+        time.sleep(22)
         s = NowPlaying(country=str(country), place_name=str(place_name),
                        name=str(name), url=str(radio),
                        timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
         db.session.add(s)
         db.session.flush()
         db.session.commit()
@@ -208,9 +186,6 @@ def create_app(**config_overrides):
         switcher = 0
         client = pyOSC3.OSCClient()
         client.connect(('10.5.0.11', 57120))
-        # if switcher == 0:
-        #     pass
-        # else:
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/stop")
         msg.append('stopping')
@@ -225,8 +200,12 @@ def create_app(**config_overrides):
         gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
             request.args['y']))]], columns=['Place', 'geometry'])
 
-        radio_list = random.choice(ckdnearest(gpd1, gpd2)[
-            ['mp3', 'country', 'place_name', 'name']].values)
+        radio_list = gpd1[gpd1.country == request.args['country']]
+        logger.info(request.args['country'])
+        logger.info(radio_list)
+        if not radio_list:
+            radio_list = random.choice(ckdnearest(gpd1, gpd2)[
+                ['mp3', 'country', 'place_name', 'name']].values)
 
         logger.info(radio_list[0])
 
@@ -252,37 +231,52 @@ def create_app(**config_overrides):
         jsonObject = {"msg": station_string}
         return jsonObject
 
+    def check_health(station):
+        """
+        Gets some mp3 chunks to check if they are valid
+        """
+        radio = station
+        print(radio)
+        r = requests.get(radio, stream=True)
+        # get some chunks
+        for chunk in r.iter_content(chunk_size=10000):
+            return chunk
+
     # @ limiter.limit("1 per 20second")
     @ app.route('/api', methods=["GET"])
     def send_station():
-
-        logger.info(request.args['x'])
-
+        """
+        Handles user requests
+        """
         gpd1 = gdf
         gpd2 = gpd.GeoDataFrame([['test', Point(float(request.args['x']), float(
             request.args['y']))]], columns=['Place', 'geometry'])
 
-        radio_list = random.choice(ckdnearest(gpd1, gpd2)[
-            ['mp3', 'country', 'place_name', 'name']].values)
+        try:
+            logger.info(gpd1[gpd1.country == request.args['country']])
+            radio_list = (gpd1[gpd1.country == request.args['country']].sample(1)[
+                ['mp3', 'country', 'place_name', 'name']].values)[0].tolist()
 
-        res_user = StreamingUser(url=radio_list[0], country=radio_list[1], place_name=radio_list[2],
-                                 name=radio_list[3], timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        res_user.save()
-        db.session.commit()
+            logger.info(request.args['country'])
+            logger.info(radio_list)
+            if not radio_list:
+                radio_list = random.choice(ckdnearest(gpd1, gpd2)[
+                    ['mp3', 'country', 'place_name', 'name']].values)
 
-        jsonObj = {"msg": "{0} {1} {2}".format(
-            res_user.country, res_user.place_name, res_user.name)}
+            chunk = check_health(radio_list[0])
+            song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3")
+            res_user = StreamingUser(url=radio_list[0], country=radio_list[1], place_name=radio_list[2],
+                                     name=radio_list[3], timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            res_user.save()
+            db.session.commit()
 
-        logger.info(radio_list[0])
+            jsonObj = {"msg": "{0} {1} {2}".format(
+                res_user.country, res_user.place_name, res_user.name)}
 
-        # client = pyOSC3.OSCClient()
-        # client.connect(('10.5.0.11', 57120))
-
-        # radio = radio_list[0]
-        # msg = pyOSC3.OSCMessage()
-        # msg.setAddress("/start")
-        # msg.append(radio)
-        # client.send(msg)
+            logger.info(radio_list[0])
+        except Exception as e:
+            jsonObj = {"msg": "An error has occured. Please choose again"}
+            logger.info(str(e))
 
         return jsonObj
 
