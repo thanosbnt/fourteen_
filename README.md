@@ -18,7 +18,13 @@ It's core setup is:
 
 ## Installing
 
-Requires [docker](https://www.docker.com/). Navigate to `docker` folder and run
+Requires [docker](https://www.docker.com/). Due to pyOSC3 requiring a static ip to communicate with the SuperCollider server, a docker network needs to be created first. E.g.
+
+```
+docker network create --subnet 10.5.0.0/24 local_network_dev
+```
+
+Then, navigate to `docker` folder and run
 
 ```
 docker-compose up

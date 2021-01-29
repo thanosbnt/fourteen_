@@ -5,7 +5,6 @@ from flask_restful import Api
 from extensions import db
 from settings.config import BaseConfig
 from api.errors import InvalidUsage
-from api.resources import StartStream, Test
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from main.models import StreamingAuto, StreamingUser, NowPlaying
