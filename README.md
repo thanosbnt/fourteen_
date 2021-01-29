@@ -30,6 +30,8 @@ Then, navigate to `docker` folder and run
 docker-compose up
 ```
 
+## Components
+
 ### SuperCollider
 
 The sound module uses granular synthesis on the incoming web radio streams. It consists of three `SynthDef`'s. One uses the stream to generate a synth like drone pitch shifted using `midiratio`. The main synth uses a fixed grain duration of 0.2 seconds with a randomly shifting grain position. The final synth acts as 'rhythm' using `Dust` to generate random impulses for grain duration.
