@@ -87,25 +87,6 @@ o = OSCFunc( { | msg, time, addr, port |
     var stationString;
 
     stationString = msg[1];
-    // (
-    // fork {
-    //     var n;
-    //     n=0.3;
-    //     30.do {
-    //         x.set(\amp, n);
-    //         y.set(\amp, n);
-    //         z.set(\amp, n);
-    //         n=n-0.01;
-    //         n.postln;
-    //         0.5.wait;
-    //     };
-    //     "This is it.".postln;
-    //     y.free;
-    //     x.free;
-    //     z.free;
-
-    // }
-    // );
 
     ( "I am " + stationString ).postln;
 

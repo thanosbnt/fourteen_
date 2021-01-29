@@ -160,7 +160,7 @@ def create_app(**config_overrides):
                 res_user.country, res_user.place_name, res_user.name)}
 
         # sleeping so backend and sc can 'sync'
-        time.sleep(22)
+        time.sleep(5)
         s = NowPlaying(country=str(country), place_name=str(place_name),
                        name=str(name), url=str(radio),
                        timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
