@@ -92,7 +92,7 @@ def create_app(**config_overrides):
     @app.errorhandler(InvalidUsage)
     def handle_invalid_usage(error):
         """
-        Handles invalid api use
+        Handles invalid api use 
         """
         response = jsonify(error.to_dict())
         response.status_code = error.status_code
@@ -138,6 +138,7 @@ def create_app(**config_overrides):
             name = res.name
             country = res.country
             place_name = res.place_name
+
         else:
             radio = res_user.url
             name = res_user.name
@@ -149,6 +150,16 @@ def create_app(**config_overrides):
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/start")
         msg.append(radio)
+        msg.append(np.random.exponential())
+
+        chunk = check_health(radio)
+        song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3")
+        song.export("SuperCollider/out.wav", format="wav")
+
+        f = open("SuperCollider/out.txt", "w")
+        f.write(name)
+        f.close()
+
         client.send(msg)
 
         if not res_user:
@@ -215,6 +226,8 @@ def create_app(**config_overrides):
         msg = pyOSC3.OSCMessage()
         msg.setAddress("/start")
         msg.append(radio)
+        msg.append(np.random.exponential())
+
         client.send(msg)
 
         station_string = np.array2string(radio_list[1:]).replace(
@@ -235,10 +248,9 @@ def create_app(**config_overrides):
         Gets some mp3 chunks to check if they are valid
         """
         radio = station
-        print(radio)
         r = requests.get(radio, stream=True)
         # get some chunks
-        for chunk in r.iter_content(chunk_size=10000):
+        for chunk in r.iter_content(chunk_size=20000):
             return chunk
 
     # @ limiter.limit("1 per 20second")
@@ -264,6 +276,12 @@ def create_app(**config_overrides):
 
             chunk = check_health(radio_list[0])
             song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3")
+            song.export("SuperCollider/out.wav", format="wav")
+
+            f = open("SuperCollider/out.txt", "w")
+            f.write(radio_list[3])
+            f.close()
+
             res_user = StreamingUser(url=radio_list[0], country=radio_list[1], place_name=radio_list[2],
                                      name=radio_list[3], timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             res_user.save()
@@ -279,10 +297,31 @@ def create_app(**config_overrides):
 
         return jsonObj
 
+    def add_random_station():
+        # Need to try to catch corrupted mp3 before sending them to SC grrrr
+        df = pd.read_csv('stations.csv')
+        sample = df.sample()
+        logger.info(sample)
+        try:
+            chunk = check_health(str(sample['mp3'].values[0]))
+            song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3")
+            logger.info(str(sample['country'].values[0]))
+            s = StreamingAuto(country=str(sample['country'].values[0]), place_name=str(sample['place_name'].values[0]),
+                              name=str(sample['name'].values[0]), url=str(sample['mp3'].values[0]),
+                              timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            db.session.add(s)
+            db.session.flush()
+            db.session.commit()
+        except Exception as e:
+            logger.info(str(e))
+            db.session.rollback()
+            pass
+
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=populate_queue, trigger="interval", seconds=30)
-    scheduler.start()
+    scheduler.add_job(func=add_random_station, trigger="interval", seconds=90)
 
+    scheduler.start()
     # Shutdown your cron thread if the web process is stopped
     atexit.register(lambda: scheduler.shutdown())
 

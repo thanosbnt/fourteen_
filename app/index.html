@@ -10,6 +10,7 @@
         <script src="https://d3js.org/d3-geo.v2.min.js"></script>
         <script src="https://d3js.org/d3-geo-projection.v3.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
         <style type="text/css">
 
           path {
@@ -32,23 +33,32 @@
             position: absolute;
             top: 200px;
           }  
+
+          #play-pause-button{
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: 1%;
+            z-index: 1; 
+            position: absolute;
+          }
+
         </style>
     </head>
     <body style="background-color:white;">
-        <audio id="music" preload="none">
+        <!-- <audio id="music" preload="none">
           <source src="{{ url_for('audio_play') }}" type="audio/mp3">
-        </audio>
+        </audio> -->
+
 
 
         <!-- <input type="button" onclick="clearInterval(add)" value="stop" /> -->
-        <!-- <input type="button" onclick="start()" value="start" /> -->
-
-
+        <a id="play-pause-button" class="fa fa-play"></a>
         <div id="text" class="textStyle"></div>
         <div id="textUser" class="textStyleUser"></div>
 
         <script type="text/javascript">
 
+        // Function to print letters-typewriter style
         function printLetterByLetter(destination, message, speed){
           document.getElementById(destination).innerHTML = "";
             var i = 0;
@@ -62,7 +72,12 @@
         }
 
 
-          var music = document.getElementById('music');
+        // Audio tag
+
+          // var music = document.getElementById('music');
+          var audio = new Audio("{{ url_for('audio_play') }}");
+
+        // Setting SVG parameters
 
           var width = 1500,
               height = 1000;
@@ -87,36 +102,13 @@
         
           svg.call(zoom);
 
-          // var text_val = "test";
-
-          // sText = g.append("text")
-          //   .attr("id", "meantext")
-          //   .text(text_val)
-          //   .attr("x", 10) 
-          //   .attr("y", 10) 
-          //   .attr("fill", "black") 
-          //   .attr("font-family",  "monospace");
-
-          // function transition(textData,row,column) {
-          //    console.log(textData);
-          //    d3.select('text').datum(textData[row].split("").slice(0,column+1))
-          //     .transition()
-          //     .delay(function(d) { return (row*5000) + (column*50); } )
-          //     .text(function(d){return d.join("");});
-          // }
-
-          // function transition2(textData,row,column) {
-          //   sText2.datum(textData[row].split("").slice(0,column+1))
-          //     .transition()
-          //     .delay(function(d) { return (row*5000) + (column*50); } )
-          //     .text(function(d){return d.join("");});
-          // }
           // Define the div for the tooltip
 
           var div = d3.select("body").append("div")	
               .attr("id", "popup")
               .attr("class", "textStyle")				
               .style("opacity", 0);
+
 
             //Load in GeoJSON data
             d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped_names.geojson", function(json) {
@@ -164,27 +156,6 @@
                                 console.log('GET response:');
                                 console.log(text.msg); 
                                 text_val =  text.msg;
-                                // if (text_val == text_val_2){
-                                //   var textData = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do ..."];
-                                //   textData.forEach(function(d,row) {
-                                //     d.split("").forEach(function(d,column) {
-                                //         transition(textData, row,column);
-                                //     });
-                                //   });
-              
-                                //   music.play();
-                                //   text_val = 'triggered';
-                                // } else {
-                                // var textData = [text_val+" user "];
-                                // textData.forEach(function(d,row) {
-                                //     d.split("").forEach(function(d,column) {
-                                //         transition(textData, row,column);
-                                //     });
-                                //   });
-          
-                                //   text_val_2 = text_val
-                                //   }
-
                             });
 
  
@@ -197,10 +168,10 @@
 
             });
 
-            var promise = music.play();
-                  if (promise) {
-                      promise.catch(function(error) { console.error(error); });
-                  }
+            // var promise = music.play();
+            //       if (promise) {
+            //           promise.catch(function(error) { console.error(error); });
+            //       }
         function zoomed() {
           g
             .selectAll('path') // To prevent stroke width from scaling
@@ -268,6 +239,26 @@
         start();
         // buttonTransition();
         // var timer_queue = setInterval(buttonTransition, 1000);
+
+        $('#play-pause-button').on("click",function(){
+          if($(this).hasClass('fa-play'))
+          {
+            $(this).removeClass('fa-play');
+            $(this).addClass('fa-pause');
+            audio.play();
+          }
+          else
+          {
+            $(this).removeClass('fa-pause');
+            $(this).addClass('fa-play');
+            audio.pause();
+          }
+        });
+
+        audio.onended = function() {
+            $("#play-pause-button").removeClass('fa-pause');
+            $("#play-pause-button").addClass('fa-play');
+        };
 
         </script>
     </body>

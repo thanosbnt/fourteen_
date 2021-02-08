@@ -3,20 +3,15 @@ s.boot;
 
 (
 m = OSCFunc( { | msg, time, addr, port | 
-    var stationString;
+    var stationString, grain_main_dur;
 
     stationString = msg[1];
+    grain_main_dur = msg[2];
     ( "stationString is " + stationString ).postln;
 
-    b = NetAddr.new("10.5.0.3", 5555);    // create the NetAddr
-    b.sendMsg("/sendStation", "haygbboi"); 
-
     protect {
-        m = MP3(stationString, \readurl);
-    
 
-        try {  m.start;}  { "mp3StartError".postln;};
-        try {  b= Buffer.readChannel(s, m.fifo, 0, 100000/2, channels:[0]);}  { "readBufferError".postln;};
+        try {  b= Buffer.readChannel(s, "app/SuperCollider/out.wav", channels:[0]); }  { "readBufferError".postln;};
 
     
         
@@ -49,7 +44,7 @@ m = OSCFunc( { | msg, time, addr, port |
             var sig, env;
             sig = GrainBuf.ar(
                 2,
-                Impulse.ar(0.2),
+                Impulse.ar(grain_main_dur),
                 grain_dur,
                 b,
                 1,
@@ -95,10 +90,6 @@ o = OSCFunc( { | msg, time, addr, port |
     protect {
     ( "I am " + stationString ).postln;
 
-    //b.play;
-    b.close; 
-    b.free;
-    m.finish;
     } {
         ( "There is an error " + stationString ).postln;
     };
