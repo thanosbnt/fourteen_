@@ -2,6 +2,8 @@
 
 ... is a mutated global web radio streamer. It is an experiment exploring decomposition, both spatial and sonic.
 
+[Click here for demo video](https://vimeo.com/529959035)
+
 It's core setup is:
 
 - [SuperCollider](https://supercollider.github.io/)
