@@ -154,10 +154,10 @@ def create_app(**config_overrides):
 
         chunk = check_health(radio)
         song = AudioSegment.from_file(io.BytesIO(chunk), format="mp3")
-        song.export("SuperCollider/out.wav", format="wav")
+        song.export("static/out.wav", format="wav")
 
-        f = open("SuperCollider/out.txt", "w")
-        f.write(name)
+        f = open("static/out.txt", "w")
+        f.write("{0} {1} {2}".format(country, place_name, name))
         f.close()
 
         client.send(msg)

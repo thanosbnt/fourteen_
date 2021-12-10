@@ -11,7 +11,7 @@ m = OSCFunc( { | msg, time, addr, port |
 
     protect {
 
-        try {  b= Buffer.readChannel(s, "app/SuperCollider/out.wav", channels:[0]); }  { "readBufferError".postln;};
+        try {  b= Buffer.readChannel(s, "app/static/out.wav", channels:[0]); }  { "readBufferError".postln;};
 
     
         

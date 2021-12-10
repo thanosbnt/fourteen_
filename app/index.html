@@ -109,22 +109,33 @@
               .attr("class", "textStyle")				
               .style("opacity", 0);
 
+        // add images
+        const defs = svg.append("defs");
+        const pattern = defs
+              .append("image")
+                .attr("xlink:href", "https://unsplash.it/300/300")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("width", 400)
+                .attr("height", 400)
+                .attr("id", "fillImage");
 
             //Load in GeoJSON data
             d3.json("https://s3-eu-west-1.amazonaws.com/cheeseshop.fcclab.org.uk/clipped_names.geojson", function(json) {
+
+
 
                 g.selectAll(".com")
                    .data(json.features)
                    .enter()
                    .append("path")
-                   .attr("class", "line")
                    .attr("d", geoGenerator)
-                   .style("fill", "none")
-                   .style("stroke","black")
+                   .attr("fill", "url('#fillImage')")
+                   // .style("stroke","black")
                    .on("mouseover", function(d) {
                           d3.select(this).style("stroke","red");
                           div.transition()		
-                            .duration(200)		
+                              .duration(200)		
                             .style("opacity", .9);		
                           div	.html(d.properties.name)	
                             .style("left", (d3.event.pageX) + "px")		
@@ -132,7 +143,7 @@
                           }
                         )
                     .on("mouseout", function(d) {
-                          d3.select(this).style("stroke","black");
+                          d3.select(this).style("stroke", "black");
                           div.transition()		
                             .duration(500)		
                             .style("opacity", 0);	
@@ -162,8 +173,9 @@
                           }
 
                         );
-          
-                  updateData();
+
+
+                  // updateData();
 
 
             });
@@ -179,7 +191,7 @@
         };
 
         function updateData() {
-          var scattered = g.selectAll("path").attr("class", "line")
+          var scattered = g.selectAll("path")
             .transition()
             .duration(2000)
             .attr("d", function(d,i) {
@@ -233,7 +245,7 @@
               text_queue = text_val;
             });  
               
-        }, 6000);
+        }, 30000);
       }
         var timer = setInterval(updateData, 5000);
         start();
@@ -259,6 +271,25 @@
             $("#play-pause-button").removeClass('fa-pause');
             $("#play-pause-button").addClass('fa-play');
         };
+
+      // function readTextFile(file)
+      // {
+      //     var rawFile = new XMLHttpRequest();
+      //     rawFile.open("GET", file, false);
+      //     rawFile.onreadystatechange = function ()
+      //     {
+      //         if(rawFile.readyState === 4)
+      //         {
+      //             if(rawFile.status === 200 || rawFile.status == 0)
+      //             {
+      //                 var allText = rawFile.responseText;
+      //                 alert(allText);
+      //             }
+      //         }
+      //     }
+      //     rawFile.send(null);
+      // }
+      // readTextFile("{{ url_for('static', filename='out.txt') }}");
 
         </script>
     </body>
